@@ -7,8 +7,24 @@ function git_status_folder
 {
 	dir=${1}
 	cd ${dir}
-	echo \# ${dir}
-	git status --porcelain
+
+	OIFS=${IFS}
+	NIFS=$'\n'
+
+	IFS=${NIFS}
+
+	GITSTATUS=`git status --porcelain`
+	if [ -n "$GITSTATUS" ]; then
+		echo \# ${dir}
+		for CHANGE in $GITSTATUS
+		do
+			IFS=${OIFS}
+			echo $CHANGE
+			IFS=${NIFS}
+		done
+	fi
+
+	IFS=$OIFS
 	cd ${ORIGPWD}
 }
 
