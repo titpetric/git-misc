@@ -16,16 +16,9 @@ Running `git st` will give you output like this:
 
 ```
 $ git st
-# ./git_hooks
-# ./minitpl/git_hooks
-# ./minitpl
-# ./composer-sentinel
-# ./research-projects/git_hooks
-# ./research-projects
 # ./git-st
  M README.md
 ?? git-st
-# ./git-hooks
 ```
 
 The example lists my current github projects folder, with several cloned projects
@@ -100,20 +93,13 @@ commit these. To see what changed over the whole tree, I issue a `git st`:
 
 ```
 ages:~/github# git st
-# ./git_hooks
 # ./git-misc
  M README.md
-?? .#README.md
 ?? git-up
-# ./minitpl/git_hooks
 # ./minitpl
  M git_hooks
-# ./composer-sentinel
-# ./research-projects/git_hooks
 # ./research-projects
  M git_hooks
-# ./git-st
-# ./git-hooks
 ```
 
 It seems `git_hooks` was previously out of date on `minitpl` and `research-projects`.
