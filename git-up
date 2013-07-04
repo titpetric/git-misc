@@ -24,7 +24,7 @@ done
 
 GITDIR=`git rev-parse --git-dir 2>&1`
 if [ $? -eq 0 ]; then
-	REPOPATH=`echo $GITDIR | sed 's/\/\?\.git//'`
+	REPOPATH=`echo $GITDIR | sed 's/\/\?\.git$//'`
 	if [ -z "$REPOPATH" ]; then
 		REPOPATH=$ORIGPWD;
 	fi
