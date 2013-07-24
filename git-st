@@ -13,7 +13,7 @@ function git_status_folder
 
 	IFS=${NIFS}
 
-	GITSTATUS=`git status --porcelain`
+	GITSTATUS=`git status | grep 'is ahead' ; git status --porcelain`
 	if [ -n "$GITSTATUS" ]; then
 		echo \# ${dir}
 		for CHANGE in $GITSTATUS
