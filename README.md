@@ -1,3 +1,53 @@
+git-robot
+=========
+
+Checkout assistant for running continous deployment checkouts.
+
+Needs `git-robot.json` under the working path (can have many of them).
+
+```
+{
+  "last_modified": "file_or_url_with_last_modified_info.json",
+  "checkout": [
+    {
+      "repository": "git@github.com:titpetric/git-misc.git",
+      "folder": "optional/output/folder/in/lieu/of/default"
+    },
+    ...
+```
+
+`file_or_url_with_last_modified_info.json` should contain the time of
+the last push to the repository. You are free to implement this as you
+wish, the main point is that this timestamp should change every time
+you want to automatically check out anything with git-robot:
+
+```
+{
+"/titpetric/git-misc/": "2013-08-15 13:13:13",
+...
+}
+```
+
+If the modification timestamp for the repository is not listed, git-robot
+will check out / pull the repository once every 24 hours and not before.
+
+You can run git-robot via crontab. It will produce output only when there
+is something to check out (when your contents modify). Keep in mind you
+have to add a SSH key for deployment to the repositories you want to check
+out via git robot used with crontab.
+
+If you want to force update of all your repositories, go to your project
+checkout path and run `git robot update`.
+
+TODO:
+
+1. configure timeout for non-tracked repositories
+2. provide example hook for github/bitbucket to track last modified data
+3. improve documentation
+
+Sorry, pretty badly documented so far, send me a message if you need help.
+
+
 git-misc
 ========
 

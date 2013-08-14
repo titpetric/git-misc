@@ -1,0 +1,243 @@
+#!/usr/bin/php
+<?php
+
+class GitRobot
+{
+	private $config;
+	public function __construct($config)
+	{
+		$this->config = $config;
+	}
+
+	public function getConfig($key = false)
+	{
+		if ($key === false) {
+			return $this->config;
+		}
+		if (!isset($this->config[$key])) {
+			return false;
+		}
+		return $this->config[$key];
+	}
+
+	protected function listConfigFiles()
+	{
+		$configs = array();
+		exec("find -type f -name 'git-robot.json'", $configs);
+		return $configs;
+	}
+
+	protected function loadConfig()
+	{
+		$retval = array();
+		$configs = $this->listConfigFiles();
+		foreach ($configs as $config) {
+			$row = array("filename" => $config, "config" => json_decode(file_get_contents($config), true), "lock" => array());
+			$lockfile = substr($config, 0, -4) . "lock";
+			if (file_exists($lockfile)) {
+				$row['lock'] = json_decode(file_get_contents($lockfile), true);
+			}
+			$retval[] = $row;
+		}
+		return $retval;
+	}
+
+	protected function log($text)
+	{
+		if (!$this->getConfig("quiet")) {
+			echo $text . "\n";
+		}
+	}
+
+	var $loaded = array();
+	var $modified = array();
+
+	protected function loadLastModified($filename)
+	{
+		if (!isset($this->loaded[$filename])) {
+			$modified = @file_get_contents($filename);
+			if ($modified !== false) {
+				$modified = json_decode($modified, true);
+			}
+			if ($modified === false) {
+				echo "Can't fetch last-modified API data: " . $filename . "\n";
+				die;
+			}
+			foreach ($modified as $repository => $meta) {
+				$this->modified[$repository] = $meta;
+			}
+			$this->loaded[$filename] = true;
+			return;
+		}
+		$this->log("Tried to load $filename twice (skipped extra load)");
+	}
+
+	public function run($command)
+	{
+		$this->log("Scraping config files ...");
+		$configs = $this->loadConfig();
+		if (empty($configs)) {
+			echo "No config files found. Nothing to be done.\n";
+			die;
+		}
+
+		$cwd = getcwd();
+		$this->log("Fetching commit data ...");
+		foreach ($configs as $config) {
+			if (isset($config['config']['last_modified'])) {
+				$path = dirname($config['filename']);
+				chdir($path);
+				$this->loadLastModified($config['config']['last_modified']);
+				chdir($cwd);
+			}
+		}
+
+		$modified = $this->modified;
+
+		foreach ($configs as $config) {
+			$path = dirname($config['filename']);
+			chdir($path);
+			if (!isset($config['config']['checkout']) || empty($config['config']['checkout'])) {
+				continue;
+			}
+			foreach ($config['config']['checkout'] as $checkout) {
+				$repo = explode(":", $checkout['repository']);
+				$repo = '/' . substr($repo[1], 0, -4) . '/';
+
+				$folder = substr(basename($checkout['repository']), 0, -4);
+				if (isset($checkout['folder'])) {
+					$folder = $checkout['folder'];
+				}
+
+				if (isset($modified[$repo])) {
+					if ($command !== "update" && is_dir($folder) && isset($config['lock'][$repo]) && $config['lock'][$repo] === $modified[$repo]) {
+						$this->log("-- repo " . $repo . " not modified --");
+						continue;
+					}
+					$config['lock'][$repo] = $modified[$repo];
+				} else {
+					$previous = strtotime(isset($config['lock'][$repo]) ? $config['lock'][$repo] : "2013-01-01");
+					$now = time();
+					$diff = $now - $previous;
+					if ($diff < 86400) {
+						// if we don't have last modification time data only
+						// update once every 24 hours unless explicit update
+						if ($command !== "update") {
+							$diff = 86400 - $diff;
+							$time = intval($diff / 60) % 60;
+							$time = intval($diff / 3600) . "h " . $time . "m";
+							$this->log("-- repo " . $repo . " next update in " . $time . " --");
+							continue;
+						}
+					}
+					$config['lock'][$repo] = date("Y-m-d H:i:s");
+				}
+
+				if (!is_dir($folder)) {
+					echo "Cloning " . $repo . "\n";
+					passthru("git clone " . $checkout['repository'] . " " . $folder);
+				} else {
+					echo "Pulling " . $repo . "\n";
+					chdir($folder);
+					passthru("git pull");
+					chdir($cwd);
+					chdir($path);
+				}
+			}
+			chdir($cwd);
+			$lockfile = substr($config['filename'], 0, -4) . "lock";
+			file_put_contents($lockfile, json_encode_pretty($config['lock']));
+		}
+
+		if ($this->getConfig("debug")) {
+			var_dump($configs);
+			var_dump($modified);
+		}
+	}
+}
+
+$config = array();
+$config['quiet'] = in_array("--quiet", $argv) || in_array("-q", $argv) || check_parent_exec("cron");
+$config['debug'] = in_array("debug", $argv);
+
+$robot = new GitRobot($config);
+$robot->run(isset($argv[1]) ? $argv[1] : "check");
+
+
+function json_encode_pretty($json_obj)
+{
+	$tab = "  ";
+	$new_json = "";
+	$indent_level = 0;
+	$in_string = false;
+	$json = json_encode($json_obj);
+	$len = strlen($json);
+	for ($c = 0; $c < $len; $c++) {
+		$char = $json[$c];
+		switch($char) {
+			case '{':
+			case '[':
+				if (!$in_string) {
+					$new_json .= $char . "\n" . str_repeat($tab, $indent_level+1);
+					$indent_level++;
+				} else {
+					$new_json .= $char;
+				}
+				break;
+			case '}':
+			case ']':
+				if (!$in_string) {
+					$indent_level--;
+					$new_json .= "\n" . str_repeat($tab, $indent_level) . $char;
+				} else {
+					$new_json .= $char;
+				}
+				break;
+			case ',':
+				if (!$in_string) {
+					$new_json .= ",\n" . str_repeat($tab, $indent_level);
+				} else {
+					$new_json .= $char;
+				}
+				break;
+			case ':':
+				if (!$in_string) {
+					$new_json .= ": ";
+				} else {
+					$new_json .= $char;
+				}
+				break;
+			case '"':
+				if ($c > 0 && $json[$c-1] != '\\')
+				{
+					$in_string = !$in_string;
+				}
+			default:
+				$new_json .= $char;
+				break;
+		}
+	}
+	$new_json = str_replace("\\/", "/", $new_json);
+	return $new_json;
+}
+
+function check_parent_exec($name)
+{
+	$pid = posix_getpid();
+	$proc_tree = array();
+	while ($pid != 0) {
+		foreach (file("/proc/".$pid."/status") as $line) {
+			$pid = 0;
+			list($k,$v) = explode(":",$line);
+			if ($k == "Name") {
+				$proc_tree[] = trim($v);
+			}
+			if ($k == "PPid") {
+				$pid = trim($v);
+				break;
+			}
+		}
+	}
+	return in_array($name, $proc_tree);
+}
+
