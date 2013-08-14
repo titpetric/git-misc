@@ -100,6 +100,7 @@ class GitRobot
 			if (!isset($config['config']['checkout']) || empty($config['config']['checkout'])) {
 				continue;
 			}
+			$is_modified = false;
 			foreach ($config['config']['checkout'] as $checkout) {
 				$repo = explode(":", $checkout['repository']);
 				$repo = '/' . substr($repo[1], 0, -4) . '/';
@@ -133,6 +134,8 @@ class GitRobot
 					$config['lock'][$repo] = date("Y-m-d H:i:s");
 				}
 
+				$is_modified = true;
+
 				if (!is_dir($folder)) {
 					echo "Cloning " . $repo . "\n";
 					passthru("git clone " . $checkout['repository'] . " " . $folder);
@@ -143,6 +146,11 @@ class GitRobot
 					chdir($cwd);
 					chdir($path);
 				}
+
+			}
+			if ($is_modified === true && isset($config['config']['hook'])) {
+				echo "Running hook\n";
+				passthru($config['config']['hook']);
 			}
 			chdir($cwd);
 			$lockfile = substr($config['filename'], 0, -4) . "lock";
