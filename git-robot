@@ -61,7 +61,7 @@ class GitRobot
 			}
 			if ($modified === false) {
 				echo "Can't fetch last-modified API data: " . $filename . "\n";
-				die;
+				$this->shutdown();
 			}
 			foreach ($modified as $repository => $meta) {
 				$this->modified[$repository] = $meta;
@@ -73,11 +73,19 @@ class GitRobot
 
 	public function run($command)
 	{
+		if ($this->config['debug']) {
+			@unlink("/tmp/robot");
+		}
+		if (file_exists("/tmp/robot")) {
+			$this->log("Locked. Run with 'debug' to ignore lock, or delete /tmp/robot");
+			die;
+		}
+
 		$this->log("Scraping config files ...");
 		$configs = $this->loadConfig();
 		if (empty($configs)) {
 			echo "No config files found. Nothing to be done.\n";
-			die;
+			$this->shutdown();
 		}
 
 		$cwd = getcwd();
@@ -150,6 +158,12 @@ class GitRobot
 			var_dump($configs);
 			var_dump($modified);
 		}
+	}
+
+	function shutdown()
+	{
+		@unlink("/tmp/robot");
+		die;
 	}
 }
 
