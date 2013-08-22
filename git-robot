@@ -23,7 +23,7 @@ class GitRobot
 	protected function listConfigFiles()
 	{
 		$configs = array();
-		exec("find -type f -name 'git-robot.json'", $configs);
+		exec("find -type f -name 'git-robot*.json'", $configs);
 		return $configs;
 	}
 
