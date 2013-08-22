@@ -3,7 +3,7 @@ git-robot
 
 Checkout assistant for running continous deployment checkouts.
 
-Needs `git-robot.json` under the working path (can have many of them).
+Needs `git-robot*.json` under the working path (can have many of them).
 
 ```
 {
