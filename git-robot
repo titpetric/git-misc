@@ -135,11 +135,11 @@ class GitRobot
 
 				if (!is_dir($folder)) {
 					echo "Cloning " . $repo . "\n";
-					passthru("git clone " . $checkout['repository'] . " " . $folder);
+					$this->passthru_retry("git clone " . $checkout['repository'] . " " . $folder);
 				} else {
 					echo "Pulling " . $repo . "\n";
 					chdir($folder);
-					passthru("git pull");
+					$this->passthru_retry("git pull");
 					chdir($cwd);
 					chdir($path);
 				}
@@ -157,6 +157,20 @@ class GitRobot
 		if ($this->getConfig("debug")) {
 			var_dump($configs);
 			var_dump($modified);
+		}
+	}
+
+	function passthru_retry($command, $times = 3)
+	{
+		while ($times > 0) {
+			$ret_var = 0;
+			passthru($command, $ret_var);
+			if ($ret_var === 0) {
+				return;
+			}
+			sleep(3);
+			echo "Retrying ...\n";
+			$times --;
 		}
 	}
 
