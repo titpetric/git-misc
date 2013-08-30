@@ -138,7 +138,7 @@ class GitRobot
 					$previous = strtotime(isset($config['lock'][$repo]) ? $config['lock'][$repo] : "2013-01-01");
 					$now = time();
 					$diff = $now - $previous;
-					if ($diff < 86400) {
+					if (is_dir($folder) && $diff < 86400) {
 						// if we don't have last modification time data only
 						// update once every 24 hours unless explicit update
 						if ($command !== "update") {
