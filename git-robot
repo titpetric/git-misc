@@ -30,12 +30,19 @@ class GitRobot
 	protected function loadConfig()
 	{
 		$retval = array();
+		$server = php_uname("n");
 		$configs = $this->listConfigFiles();
 		foreach ($configs as $config) {
 			$row = array("filename" => $config, "config" => json_decode(file_get_contents($config), true), "lock" => array());
 			$lockfile = substr($config, 0, -4) . "lock";
 			if (file_exists($lockfile)) {
 				$row['lock'] = json_decode(file_get_contents($lockfile), true);
+			}
+			if (isset($row['config']['server_allow'])) {
+				if (!in_array($server, $row['config']['server_allow'])) {
+					$this->log("Skipping ".$row['filename'].", checkout not allowed on $server");
+					continue;
+				}
 			}
 			$retval[] = $row;
 		}
