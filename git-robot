@@ -66,7 +66,7 @@ class GitRobot
 			if ($modified !== false) {
 				$modified = json_decode($modified, true);
 			}
-			if (is_null($modified)) {
+			if ($modified === false || is_null($modified)) {
 				echo "Can't fetch last-modified API data: " . $filename . "\n";
 				$this->shutdown();
 			}
