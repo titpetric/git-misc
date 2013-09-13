@@ -171,8 +171,10 @@ class GitRobot
 				passthru($config['config']['hook']);
 			}
 			chdir($cwd);
-			$lockfile = substr($config['filename'], 0, -4) . "lock";
-			file_put_contents($lockfile, json_encode_pretty($config['lock']));
+			if ($is_modified) {
+				$lockfile = substr($config['filename'], 0, -4) . "lock";
+				file_put_contents($lockfile, json_encode_pretty($config['lock']));
+			}
 		}
 
 		if ($this->getConfig("debug")) {
