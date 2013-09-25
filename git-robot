@@ -74,7 +74,6 @@ class GitRobot
 				$this->modified[$repository] = $meta;
 			}
 			$this->loaded[$filename] = true;
-			return;
 		}
 	}
 
@@ -87,6 +86,7 @@ class GitRobot
 			$this->log("Locked. Run with 'debug' to ignore lock, or delete /tmp/robot");
 			die;
 		}
+		@touch("/tmp/robot");
 
 		$this->log("Scraping config files ...");
 		$configs = $this->loadConfig();
@@ -181,6 +181,7 @@ class GitRobot
 			var_dump($configs);
 			var_dump($modified);
 		}
+		$this->shutdown();
 	}
 
 	function passthru_retry($command, $times = 3)
