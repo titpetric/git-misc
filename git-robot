@@ -41,13 +41,15 @@ class GitRobot
 				$row['lock'] = json_decode(file_get_contents($lockfile), true);
 			}
 			if (isset($row['config']['user_allow'])) {
-				if (!in_array($username, $row['config']['user_allow'])) {
+				$users_allow = is_array($row['config']['user_allow']) ? $row['config']['user_allow'] : array($row['config']['user_allow']);
+				if (!in_array($username, $users_allow)) {
 					$this->log("Skipping ".$row['filename'].", checkout not allowed with user $username");
 					continue;
 				}
 			}
 			if (isset($row['config']['server_allow'])) {
-				if (!in_array($server, $row['config']['server_allow'])) {
+				$servers_allow = is_array($row['config']['server_allow']) ? $row['config']['server_allow'] : array($row['config']['server_allow']);
+				if (!in_array($server, $servers_allow)) {
 					$this->log("Skipping ".$row['filename'].", checkout not allowed on $server");
 					continue;
 				}
