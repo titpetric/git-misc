@@ -165,10 +165,10 @@ class GitRobot
 				$is_modified = true;
 
 				if (!is_dir($folder)) {
-					echo "Cloning " . $repo . "\n";
+					$this->log("Cloning " . $repo);
 					$this->passthru_retry("git clone " . $checkout['repository'] . " " . $folder);
 				} else {
-					echo "Pulling " . $repo . "\n";
+					$this->log("Pulling " . $repo);
 					chdir($folder);
 					$this->passthru_retry("git pull");
 					chdir($cwd);
@@ -177,7 +177,7 @@ class GitRobot
 
 			}
 			if ($is_modified === true && isset($config['config']['hook'])) {
-				echo "Running hook\n";
+				$this->log("Running hook");
 				passthru($config['config']['hook']);
 			}
 			chdir($cwd);
@@ -196,14 +196,23 @@ class GitRobot
 
 	function passthru_retry($command, $times = 3)
 	{
+		$quiet = false;
+		if ($this->getConfig("quiet")) {
+			$quiet = " &> /dev/null";
+			$command .= $quiet;
+		}
 		while ($times > 0) {
 			$ret_var = 0;
 			passthru($command, $ret_var);
 			if ($ret_var === 0) {
 				return;
 			}
+			if ($quiet !== false) {
+				$command = substr($command, 0, -strlen($quiet));
+				$quiet = false;
+			}
+			echo "Retrying (" . $command . ")...\n";
 			sleep(3);
-			echo "Retrying ...\n";
 			$times --;
 		}
 	}
@@ -217,6 +226,9 @@ class GitRobot
 
 $config = array();
 $config['quiet'] = in_array("--quiet", $argv) || in_array("-q", $argv) || check_parent_exec("cron");
+if (in_array("--verbose", $argv)) {
+	$config['quiet'] = false;
+}
 $config['debug'] = in_array("debug", $argv);
 
 $robot = new GitRobot($config);
