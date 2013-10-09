@@ -134,18 +134,23 @@ class GitRobot
 					$folder = $checkout['folder'];
 				}
 
+				if (isset($config['lock'][$repo]) && !is_array($config['lock'][$repo])) {
+					$config['lock'][$repo] = array("time" => $config['lock'][$repo]);
+				}
+
 				if (isset($modified[$repo])) {
-					if ($command !== "update" && is_dir($folder) && isset($config['lock'][$repo]) && $config['lock'][$repo] === $modified[$repo]) {
+					// convert old format
+					if ($command !== "update" && is_dir($folder) && isset($config['lock'][$repo]) && $config['lock'][$repo]['time'] === $modified[$repo]) {
 						$this->log("-- repo " . $repo . " not modified --");
 						continue;
 					}
-					$config['lock'][$repo] = $modified[$repo];
+					$config['lock'][$repo]['time'] = $modified[$repo];
 				} else {
-					if ($command !== "update" && check_parent_exec("cron")) {
+					if ($command !== "update" && $this->getConfig("quiet")) {
 						$this->log("-- repo " . $repo . " update manual ('git robot update') --");
 						continue;
 					}
-					$previous = strtotime(isset($config['lock'][$repo]) ? $config['lock'][$repo] : "2013-01-01");
+					$previous = strtotime(isset($config['lock'][$repo]['time']) ? $config['lock'][$repo]['time'] : "2013-01-01");
 					$now = time();
 					$diff = $now - $previous;
 					if (is_dir($folder) && $diff < 86400) {
@@ -159,7 +164,7 @@ class GitRobot
 							continue;
 						}
 					}
-					$config['lock'][$repo] = date("Y-m-d H:i:s");
+					$config['lock'][$repo]['time'] = date("Y-m-d H:i:s");
 				}
 
 				$is_modified = true;
@@ -174,7 +179,12 @@ class GitRobot
 					chdir($cwd);
 					chdir($path);
 				}
-
+				chdir($folder);
+				$retval = array();
+				exec("git rev-list HEAD --count", $retval);
+				$config['lock'][$repo]['count'] = trim(reset($retval));
+				chdir($cwd);
+				chdir($path);
 			}
 			if ($is_modified === true && isset($config['config']['hook'])) {
 				$this->log("Running hook");
