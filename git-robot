@@ -87,25 +87,18 @@ class GitRobot
 		}
 	}
 
+	var $path = "?";
+
 	public function run($command)
 	{
-		if ($this->config['debug']) {
-			@unlink("/tmp/robot");
-		}
-		if (file_exists("/tmp/robot")) {
-			$this->log("Locked. Run with 'debug' to ignore lock, or delete /tmp/robot");
-			die;
-		}
-		@touch("/tmp/robot");
-
 		$this->log("Scraping config files ...");
 		$configs = $this->loadConfig();
 		if (empty($configs)) {
 			echo "No config files found. Nothing to be done.\n";
-			$this->shutdown();
+			$this->shutdown(true);
 		}
 
-		$cwd = getcwd();
+		$this->path = $cwd = getcwd();
 		$this->log("Fetching commit data ...");
 		foreach ($configs as $config) {
 			if (isset($config['config']['last_modified'])) {
@@ -116,10 +109,17 @@ class GitRobot
 			}
 		}
 
+		$lock_failed = false;
 		$modified = $this->modified;
 
 		foreach ($configs as $config) {
 			$path = dirname($config['filename']);
+
+			if (!$this->addLock($path)) {
+				$lock_failed = true;
+				continue;
+			}
+
 			chdir($path);
 			if (!isset($config['config']['checkout']) || empty($config['config']['checkout'])) {
 				continue;
@@ -201,14 +201,14 @@ class GitRobot
 			var_dump($configs);
 			var_dump($modified);
 		}
-		$this->shutdown();
+		$this->shutdown($lock_failed);
 	}
 
-	function passthru_retry($command, $times = 3)
+	private function passthru_retry($command, $times = 3)
 	{
 		$quiet = false;
 		if ($this->getConfig("quiet")) {
-			$quiet = " &> /dev/null";
+			$quiet = " > /dev/null 2>&1";
 			$command .= $quiet;
 		}
 		while ($times > 0) {
@@ -227,9 +227,29 @@ class GitRobot
 		}
 	}
 
-	function shutdown()
+	var $locks = array();
+
+	private function addLock($path)
 	{
-		@unlink("/tmp/robot");
+		global $locks;
+		$lock = "/tmp/robot_" . sprintf("%u", crc32($this->path)) ."_". sprintf("%u", crc32($path));
+		if (!file_exists($lock)) {
+			file_put_contents($lock, $this->path . ": " . $path);
+			$this->locks[] = $lock;
+			return true;
+		}
+		$this->log("Failed to lock run for " . $config['filename'] . " / " . $lock);
+		return false;
+	}
+
+	private function shutdown($raise = false)
+	{
+		foreach ($this->locks as $lock) {
+			@unlink($lock);
+		}
+		if ($raise && !check_parent_exec("cron")) {
+			exit(1);
+		}
 		die;
 	}
 }
