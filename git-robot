@@ -77,7 +77,7 @@ class GitRobot
 				$modified = json_decode($modified, true);
 			}
 			if ($modified === false || is_null($modified)) {
-				echo "Can't fetch last-modified API data: " . $filename . "\n";
+				$this->log("Can't fetch last-modified API data: " . $filename . "\n");
 				$this->shutdown();
 			}
 			foreach ($modified as $repository => $meta) {
