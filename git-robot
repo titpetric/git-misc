@@ -171,7 +171,11 @@ class GitRobot
 
 				if (!is_dir($folder)) {
 					$this->log("Cloning " . $repo);
-					$this->passthru_retry("git clone " . $checkout['repository'] . " " . $folder);
+					$options = array();
+					if (isset($checkout['branch'])) {
+						$options[] = "-b " . $checkout['branch'];
+					}
+					$this->passthru_retry("git clone " . implode(" ", $options) . " " . $checkout['repository'] . " " . $folder);
 				} else {
 					$this->log("Pulling " . $repo);
 					chdir($folder);
