@@ -40,6 +40,10 @@ class GitRobot
 			if (file_exists($lockfile)) {
 				$row['lock'] = json_decode(file_get_contents($lockfile), true);
 			}
+			if (is_null($row['config'])) {
+				$this->log("Error parsing config: " . $config);
+				die;
+			}
 			if (isset($row['config']['user_allow'])) {
 				$users_allow = is_array($row['config']['user_allow']) ? $row['config']['user_allow'] : array($row['config']['user_allow']);
 				if (!in_array($username, $users_allow)) {
@@ -54,6 +58,24 @@ class GitRobot
 					continue;
 				}
 			}
+			$checkouts = array();
+			foreach ($row['config']['checkout'] as $repository) {
+				if (isset($repository['name']) && is_array($repository['name'])) {
+					foreach ($repository['name'] as $name) {
+						$checkout = $repository;
+						unset($checkout['name']);
+						foreach ($checkout as $key => $val) {
+							if (is_string($val)) {
+								$checkout[$key] = str_replace("{name}", $name, $val);
+							}
+						}
+						$checkouts[] = $checkout;
+					}
+					continue;
+				}
+				$checkouts[] = $repository;
+			}
+			$row['config']['checkout'] = $checkouts;
 			$retval[] = $row;
 		}
 		return $retval;
@@ -114,8 +136,7 @@ class GitRobot
 
 		foreach ($configs as $config) {
 			$path = dirname($config['filename']);
-
-			if (!$this->addLock($path)) {
+			if (!$this->addLock($config['filename'])) {
 				$lock_failed = true;
 				continue;
 			}
