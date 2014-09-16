@@ -16,6 +16,24 @@ Needs `git-robot*.json` under the working path (can have many of them).
     ...
 ```
 
+It is possible to use a "template" approach, if your modules follow
+the same naming scheme. This cuts down the verbosity of the checkout
+entries in the configuration files. The application will register
+one checkout for each entry in the `name` array, replacing the variable
+`{name}` in the relevant `repository` and `folder` entries. See this example:
+
+```
+{
+  "last_modified": "file_or_url_with_last_modified_info.json",
+  "checkout": [
+    {
+      "name": ["news", "articles", "faq", "admin"],
+      "repository": "git@github.com:titpetric/cms-page-{name}.git",
+      "folder": "pages/{name}"
+    },
+    ...
+```
+
 `file_or_url_with_last_modified_info.json` should contain the time of
 the last push to the repository. You are free to implement this as you
 wish, the main point is that this timestamp should change every time
