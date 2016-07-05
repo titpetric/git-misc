@@ -1,6 +1,8 @@
 #!/usr/bin/php
 <?php
 
+date_default_timezone_set('Europe/Bucharest');
+
 class GitRobot
 {
 	private $config;
@@ -93,20 +95,35 @@ class GitRobot
 
 	protected function loadLastModified($filename)
 	{
-		if (!isset($this->loaded[$filename])) {
-			$modified = @file_get_contents($filename);
-			if ($modified !== false) {
-				$modified = json_decode($modified, true);
-			}
-			if ($modified === false || is_null($modified)) {
-				$this->log("Can't fetch last-modified API data: " . $filename . "\n");
-				$this->shutdown();
-			}
-			foreach ($modified as $repository => $meta) {
-				$this->modified[$repository] = $meta;
-			}
-			$this->loaded[$filename] = true;
+		if (!is_array($filename)) {
+			$filename = array($filename);
 		}
+		foreach ($filename as $file) {
+			if (!isset($this->loaded[$file])) {
+				if ($this->getConfig("debug")) {
+					echo " > " . $file . "\n";
+				}
+				$modified = @file_get_contents($file);
+				if ($modified !== false) {
+					$modified = json_decode($modified, true);
+				}
+				if ($modified === false || is_null($modified)) {
+					$this->log("Can't fetch last-modified API data: " . $file . "\n");
+					$this->shutdown();
+				}
+				if ($this->getConfig("debug")) {
+					echo "   got " . count($modified) . " repositories\n";
+				}
+				foreach ($modified as $repository => $meta) {
+					// on duplicate repository entries, check the newer (support migration)
+					if (!isset($this->modified[$repository]) || $meta > $this->modified[$repository]) {
+						$this->modified[$repository] = $meta;
+					}
+				}
+				$this->loaded[$file] = true;
+			}
+		}
+		asort($this->modified);
 	}
 
 	var $path = "?";
