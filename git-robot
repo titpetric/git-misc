@@ -217,6 +217,9 @@ class GitRobot
 				} else {
 					$this->log("Pulling " . $repo);
 					chdir($folder);
+					// reset checkout keeping new files
+					$this->passthru_retry("git checkout .");
+					// pull new HEAD from origin
 					$this->passthru_retry("git pull");
 					chdir($cwd);
 					chdir($path);
