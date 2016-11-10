@@ -226,8 +226,9 @@ class GitRobot
 				}
 				chdir($folder);
 				$retval = array();
-				exec("git rev-list HEAD --count", $retval);
-				$config['lock'][$repo]['count'] = trim(reset($retval));
+				exec("git rev-list HEAD", $retval);
+				$config['lock'][$repo]['count'] = count($retval);
+				$config['lock'][$repo]['commit'] = reset($retval);
 				chdir($cwd);
 				chdir($path);
 			}
