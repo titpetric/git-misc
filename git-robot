@@ -1,6 +1,25 @@
 #!/usr/bin/env php
 <?php
 
+declare(ticks = 1);
+pcntl_signal(SIGPIPE, "sig_handler");
+pcntl_signal(SIGHUP, "sig_handler");
+pcntl_signal(SIGQUIT, "sig_handler");
+pcntl_signal(SIGTERM, "sig_handler");
+pcntl_signal(SIGINT,  "sig_handler");
+
+function sig_handler($signal) {
+	global $robot;
+	switch($signal) {
+		case SIGPIPE: echo "Caught SIGPIPE\n"; break;
+		case SIGHUP: echo "Caught SIGHUP\n"; break;
+		case SIGQUIT: echo "Caught SIGQUIT\n"; break;
+		case SIGTERM: echo "Caught SIGTERM\n"; break;
+		case SIGINT: echo "Caught SIGINT\n"; break;
+	}
+	$robot->shutdown();
+}
+
 date_default_timezone_set('Europe/Bucharest');
 
 class GitRobot
@@ -130,6 +149,24 @@ class GitRobot
 
 	public function run($command)
 	{
+		if ($command == "init" && !file_exists("git-robot.json")) {
+			$server = php_uname("n");
+			$example = <<<JSON
+{
+  "last_modified": "",
+  "server_allow": ["$server"],
+  "checkout": [
+    {
+      "repository": "git@github.com:username/repo.git",
+      "folder": "repo"
+    }
+  ]
+}
+JSON;
+			file_put_contents("git-robot.json", $example);
+			die;
+		}
+
 		$this->log("Scraping config files ...");
 		$configs = $this->loadConfig();
 		if (empty($configs)) {
@@ -140,7 +177,7 @@ class GitRobot
 		$this->path = $cwd = getcwd();
 		$this->log("Fetching commit data ...");
 		foreach ($configs as $config) {
-			if (isset($config['config']['last_modified'])) {
+			if (!empty($config['config']['last_modified'])) {
 				$path = dirname($config['filename']);
 				chdir($path);
 				$this->loadLastModified($config['config']['last_modified']);
@@ -168,7 +205,7 @@ class GitRobot
 				$repo = '/' . substr($repo[1], 0, -4) . '/';
 
 				$folder = substr(basename($checkout['repository']), 0, -4);
-				if (isset($checkout['folder'])) {
+				if (!empty($checkout['folder'])) {
 					$folder = $checkout['folder'];
 				}
 
@@ -226,9 +263,8 @@ class GitRobot
 				}
 				chdir($folder);
 				$retval = array();
-				exec("git rev-list HEAD", $retval);
-				$config['lock'][$repo]['count'] = count($retval);
-				$config['lock'][$repo]['commit'] = reset($retval);
+				exec("git rev-list HEAD --count", $retval);
+				$config['lock'][$repo]['count'] = trim(reset($retval));
 				chdir($cwd);
 				chdir($path);
 			}
@@ -288,7 +324,7 @@ class GitRobot
 		return false;
 	}
 
-	private function shutdown($raise = false)
+	public function shutdown($raise = false)
 	{
 		foreach ($this->locks as $lock) {
 			@unlink($lock);
