@@ -254,8 +254,10 @@ JSON;
 				} else {
 					$this->log("Pulling " . $repo);
 					chdir($folder);
-					// reset checkout keeping new files
-					$this->passthru_retry("git checkout .");
+					if ($this->getConfig("reset")) {
+						// reset checkout keeping new files
+						$this->passthru_retry("git checkout .");
+					}
 					// pull new HEAD from origin
 					$this->passthru_retry("git pull");
 					chdir($cwd);
@@ -303,10 +305,12 @@ JSON;
 				$command = substr($command, 0, -strlen($quiet));
 				$quiet = false;
 			}
-			echo "Retrying (" . $command . ")...\n";
+			echo "Retrying (" . $command . " @ " . getcwd() . ")...\n";
 			sleep(3);
 			$times --;
 		}
+		echo "Command failed: '" . $command . "'\n";
+		exit(1);
 	}
 
 	var $locks = array();
@@ -338,6 +342,7 @@ JSON;
 
 $config = array();
 $config['quiet'] = in_array("--quiet", $argv) || in_array("-q", $argv) || check_parent_exec("cron");
+$config['reset'] = in_array("--reset", $argv);
 if (in_array("--verbose", $argv)) {
 	$config['quiet'] = false;
 }
