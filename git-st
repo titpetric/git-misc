@@ -15,7 +15,7 @@ function git_status_folder
 
 	GITSTATUS=`git status | grep 'is ahead' ; git status --porcelain`
 	if [ -n "$GITSTATUS" ]; then
-		echo \# ${dir}
+		echo -e "\e[93m# ${dir}\e[0m"
 		for CHANGE in $GITSTATUS
 		do
 			IFS=${OIFS}
