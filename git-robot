@@ -250,6 +250,9 @@ JSON;
 					if (isset($checkout['branch'])) {
 						$options[] = "-b " . $checkout['branch'];
 					}
+					if (isset($checkout['depth'])) {
+						$options[] = "--depth " . $checkout['depth'];
+					}
 					$this->passthru_retry("git clone " . implode(" ", $options) . " " . $checkout['repository'] . " " . $folder);
 				} else {
 					$this->log("Pulling " . $repo);
