@@ -104,7 +104,14 @@ class GitRobot
 
 	protected function log($text)
 	{
-		if (!$this->getConfig("quiet")) {
+		if ($this->getConfig("verbosity") > 0) {
+			echo $text . "\n";
+		}
+	}
+
+	protected function info($text)
+	{
+		if ($this->getConfig("verbosity") > 1) {
 			echo $text . "\n";
 		}
 	}
@@ -216,12 +223,12 @@ JSON;
 				if (isset($modified[$repo])) {
 					// convert old format
 					if ($command !== "update" && is_dir($folder) && isset($config['lock'][$repo]) && $config['lock'][$repo]['time'] === $modified[$repo]) {
-						$this->log("-- repo " . $repo . " not modified --");
+						$this->info("-- repo " . $repo . " not modified --");
 						continue;
 					}
 					$config['lock'][$repo]['time'] = $modified[$repo];
 				} else {
-					if ($command !== "update" && $this->getConfig("quiet")) {
+					if ($command !== "update") {
 						$this->log("-- repo " . $repo . " update manual ('git robot update') --");
 						continue;
 					}
@@ -294,7 +301,7 @@ JSON;
 	private function passthru_retry($command, $times = 3)
 	{
 		$quiet = false;
-		if ($this->getConfig("quiet")) {
+		if ($this->getConfig("verbosity") < 1) {
 			$quiet = " > /dev/null 2>&1";
 			$command .= $quiet;
 		}
@@ -344,12 +351,15 @@ JSON;
 }
 
 $config = array();
-$config['quiet'] = in_array("--quiet", $argv) || in_array("-q", $argv) || check_parent_exec("cron");
+$config['verbosity'] = 1;
 $config['reset'] = in_array("--reset", $argv);
-if (in_array("--verbose", $argv)) {
-	$config['quiet'] = false;
-}
 $config['debug'] = in_array("debug", $argv);
+if (in_array("--quiet", $argv) || in_array("-q", $argv) || check_parent_exec("cron")) {
+	$config['verbosity'] = 0;
+}
+if ($config['debug'] || in_array("--verbose", $argv) || in_array("-v", $argv)) {
+	$config['verbosity'] = 2;
+}
 
 $robot = new GitRobot($config);
 $robot->run(isset($argv[1]) ? $argv[1] : "check");
